@@ -19,6 +19,7 @@ function App() {
   const [status, setStatus] = useState("Status: 🔴 SERVIDOR OFF — Aguardando conexão");
   const [config, setConfig] = useState({ host: "192.168.1.100", port: "5432", db: "hospital", user: "postgres", pass: "" });
   const [isConnected, setIsConnected] = useState(false);
+  const [autoConnectEnabled, setAutoConnectEnabled] = useState(true);
   const [backupPath, setBackupPath] = useState("");
   const [schedule, setSchedule] = useState("24h");
   const [logs, setLogs] = useState<{date: string, time: string, msg: string, type: string}[]>([]);
@@ -57,12 +58,22 @@ function App() {
     }
   }, []);
 
-  // Auto connect if we loaded a password
+  // Auto connect and retry mechanism
   useEffect(() => {
-    if (config.pass && !isConnected) {
-      testConnection();
-    }
-  }, [config.pass]);
+    if (!config.pass || isConnected || !autoConnectEnabled) return;
+
+    // Tentar conectar imediatamente se ainda não estiver conectado
+    testConnection();
+
+    // Tentar reconectar a cada 5 segundos se falhar
+    const interval = setInterval(() => {
+      if (!isConnected && autoConnectEnabled) {
+        testConnection();
+      }
+    }, 5000);
+
+    return () => clearInterval(interval);
+  }, [config.pass, isConnected, autoConnectEnabled]);
 
   const fetchTables = async () => {
     try {
@@ -237,7 +248,10 @@ function App() {
                 localStorage.setItem("axion_config", JSON.stringify({ config, backupPath, schedule }));
                 addLog("As configurações foram enviadas e salvas no Banco Local!", "success");
               }}>Salvar Configuração</button>
-              <button className="btn-test" onClick={() => setIsConnected(false)}>Desconectar</button>
+              <button className="btn-test" onClick={() => {
+                setAutoConnectEnabled(false);
+                setIsConnected(false);
+              }}>Desconectar</button>
               <button 
                 className="btn-test" 
                 style={{ flex: 0.4, borderColor: '#ef4444', color: '#ef4444', padding: '0.8rem' }}
@@ -377,8 +391,14 @@ function App() {
           <input type="password" value={config.pass} onChange={(e) => setConfig({ ...config, pass: e.target.value })} placeholder="********" />
           
           <div className="buttons">
-            <button className="btn-test" onClick={testConnection}>TESTAR CONEXÃO</button>
-            <button className="btn-connect" disabled={!status.includes("ON")}>CONECTAR</button>
+            <button className="btn-test" onClick={() => {
+              setAutoConnectEnabled(true);
+              testConnection();
+            }}>TESTAR CONEXÃO</button>
+            <button className="btn-connect" disabled={!status.includes("ON")} onClick={() => {
+              setAutoConnectEnabled(true);
+              setIsConnected(true);
+            }}>CONECTAR</button>
           </div>
           <div className="status-box">
             {status}
