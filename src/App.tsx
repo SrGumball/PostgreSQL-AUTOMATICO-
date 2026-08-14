@@ -385,6 +385,10 @@ function App() {
           </div>
         </div>
       ) : renderDashboard()}
+      
+      <div style={{ textAlign: 'center', marginTop: '2rem', color: '#a6adc8', fontSize: '0.9rem', paddingBottom: '1rem' }}>
+        Desenvolvido por <strong>ALEF DIAS</strong>
+      </div>
     </div>
   );
 }

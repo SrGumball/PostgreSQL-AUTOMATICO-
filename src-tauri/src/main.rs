@@ -175,6 +175,14 @@ fn main() {
     let tray = SystemTray::new().with_menu(tray_menu);
 
     tauri::Builder::default()
+        .plugin(tauri_plugin_single_instance::init(|app, argv, cwd| {
+            if let Some(window) = app.get_window("main") {
+                window.show().unwrap();
+                window.unminimize().unwrap();
+                window.set_focus().unwrap();
+            }
+        }))
+        .plugin(tauri_plugin_autostart::init(tauri_plugin_autostart::MacosLauncher::LaunchAgent, Some(vec!["--hidden"])))
         .manage(AppState {
             db_config: Mutex::new(None),
             server_on: Mutex::new(false),
@@ -205,14 +213,16 @@ fn main() {
         })
         .invoke_handler(tauri::generate_handler![test_connection, execute_backup, cleanup_old_backups, get_database_tables, get_table_data])
         .setup(|app: &mut tauri::App| -> Result<(), Box<dyn std::error::Error>> {
+            // Enable autostart automatically
+            use tauri_plugin_autostart::ManagerExt;
+            if let Ok(autostart_manager) = app.autolaunch() {
+                let _ = autostart_manager.enable();
+            }
+
             // Inicializar a thread de background
             let app_handle = app.handle();
             tauri::async_runtime::spawn(async move {
                 loop {
-                    // Loop de Monitoramento
-                    // println!("Monitorando banco de dados...");
-                    
-                    // Em produção: ler AppState, verificar conexão, rodar cron jobs de backup.
                     sleep(Duration::from_secs(60)).await;
                 }
             });
