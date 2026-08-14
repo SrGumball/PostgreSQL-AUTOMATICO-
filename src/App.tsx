@@ -63,14 +63,24 @@ function App() {
     }
   }, [config.pass]);
 
+  const fetchTables = async () => {
+    try {
+      const tables = await invoke("get_database_tables", { ...config });
+      if (Array.isArray(tables)) {
+        setDbTables(tables);
+      }
+    } catch (err) {
+      addLog("Erro ao listar tabelas do banco: " + err, "error");
+    }
+  };
+
   useEffect(() => {
     if (isConnected) {
       addLog("Conexão com PostgreSQL estabelecida com sucesso.", "success");
-      
-      // Save config to local db
       localStorage.setItem("axion_config", JSON.stringify({ config, backupPath, schedule }));
+      fetchTables();
     }
-  }, [isConnected, config, backupPath, schedule]);
+  }, [isConnected]);
 
   function addLog(msg: string, type: string = "info") {
     const now = new Date();
@@ -132,15 +142,6 @@ function App() {
       if (res === "ok") {
         setStatus("Status: 🟢 SERVIDOR ON — PostgreSQL conectado");
         setIsConnected(true);
-        
-        // Fetch tables
-        try {
-          const tables = await invoke("get_database_tables", { ...config });
-          if (Array.isArray(tables)) setDbTables(tables);
-        } catch (err) {
-          addLog("Não foi possível listar as tabelas do banco.", "error");
-        }
-
       } else {
         setStatus("Status: 🔴 SERVIDOR OFF — " + res);
         setIsConnected(false);
