@@ -90,13 +90,14 @@ input, .schedule-select {
 
 /* Força estilo no Linux/WebKit para o Select não ficar branco */
 .schedule-select {
-  background-color: #0f172a !important;
-  color: #ffffff !important;
+  background-color: rgba(255, 255, 255, 0.9) !important;
+  color: #000000 !important;
+  font-weight: 500;
 }
 
 .schedule-select option {
-  background-color: #1e293b !important;
-  color: #ffffff !important;
+  background-color: #ffffff !important;
+  color: #000000 !important;
 }
 
 input:focus, .schedule-select:focus { 
