@@ -88,9 +88,15 @@ input, .schedule-select {
   font-family: 'Outfit', sans-serif;
 }
 
+/* Força estilo no Linux/WebKit para o Select não ficar branco */
+.schedule-select {
+  background-color: #0f172a !important;
+  color: #ffffff !important;
+}
+
 .schedule-select option {
-  background: #1e293b;
-  color: #ffffff;
+  background-color: #1e293b !important;
+  color: #ffffff !important;
 }
 
 input:focus, .schedule-select:focus { 
