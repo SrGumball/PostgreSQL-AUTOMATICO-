@@ -37,6 +37,30 @@ fn test_connection(host: &str, port: &str, db: &str, user: &str, pass: &str, sta
     }
 }
 
+#[cfg(target_os = "windows")]
+fn get_pg_dump_path() -> String {
+    use std::path::Path;
+    // Check common PostgreSQL installation paths on Windows
+    let common_versions = ["17", "16", "15", "14", "13", "12", "11", "10"];
+    for version in common_versions.iter() {
+        let path = format!("C:\\Program Files\\PostgreSQL\\{}\\bin\\pg_dump.exe", version);
+        if Path::new(&path).exists() {
+            return path;
+        }
+        let path_x86 = format!("C:\\Program Files (x86)\\PostgreSQL\\{}\\bin\\pg_dump.exe", version);
+        if Path::new(&path_x86).exists() {
+            return path_x86;
+        }
+    }
+    // Fallback to system PATH
+    "pg_dump".to_string()
+}
+
+#[cfg(not(target_os = "windows"))]
+fn get_pg_dump_path() -> String {
+    "pg_dump".to_string()
+}
+
 #[tauri::command]
 fn execute_backup(host: &str, port: &str, db: &str, user: &str, pass: &str, dest: &str) -> Result<f64, String> {
     use std::process::Command;
@@ -48,7 +72,9 @@ fn execute_backup(host: &str, port: &str, db: &str, user: &str, pass: &str, dest
     let filepath = std::path::Path::new(dest).join(&filename);
     let filepath_str = filepath.to_str().unwrap();
 
-    let output = Command::new("pg_dump")
+    let pg_dump_cmd = get_pg_dump_path();
+
+    let output = Command::new(&pg_dump_cmd)
         .env("PGPASSWORD", pass)
         .arg("-h").arg(host)
         .arg("-p").arg(port)
