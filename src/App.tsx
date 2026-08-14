@@ -266,15 +266,15 @@ function App() {
       </div>
       
       {/* Coluna Inferior: Estrutura do Banco de Dados */}
-      {isConnected && dbTables.length > 0 && (
+      {isConnected && (
         <div className="card" style={{ marginTop: '2rem' }}>
           <h2><Database size={20} style={{verticalAlign: 'middle', marginRight: 8}}/> Tabelas Inclusas no Backup (Estrutura do Banco)</h2>
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem' }}>
-            {dbTables.map(t => (
+            {dbTables.length > 0 ? dbTables.map(t => (
               <span key={t} style={{ background: '#262626', padding: '0.4rem 0.8rem', borderRadius: '4px', fontSize: '0.8rem', color: '#a3a3a3', border: '1px solid #404040' }}>
                 {t}
               </span>
-            ))}
+            )) : <span style={{color: '#a3a3a3'}}>Carregando tabelas ou banco de dados vazio...</span>}
           </div>
         </div>
       )}
