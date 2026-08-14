@@ -4,7 +4,7 @@
 use postgres::{Client, NoTls};
 use tauri::{Manager, SystemTray, SystemTrayEvent, SystemTrayMenu, CustomMenuItem};
 use std::time::Duration;
-use std::sync::{Arc, Mutex};
+use std::sync::Mutex;
 use tokio::time::sleep;
 
 struct AppState {
@@ -215,9 +215,8 @@ fn main() {
         .setup(|app: &mut tauri::App| -> Result<(), Box<dyn std::error::Error>> {
             // Enable autostart automatically
             use tauri_plugin_autostart::ManagerExt;
-            if let Ok(autostart_manager) = app.autolaunch() {
-                let _ = autostart_manager.enable();
-            }
+            let autostart_manager = app.autolaunch();
+            let _ = autostart_manager.enable();
 
             // Inicializar a thread de background
             let app_handle = app.handle();
