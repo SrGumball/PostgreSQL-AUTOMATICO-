@@ -271,10 +271,10 @@ function App() {
           <h2><Database size={20} style={{verticalAlign: 'middle', marginRight: 8}}/> Tabelas Inclusas no Backup (Estrutura do Banco)</h2>
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem' }}>
             {dbTables.length > 0 ? dbTables.map(t => (
-              <span key={t} style={{ background: '#262626', padding: '0.4rem 0.8rem', borderRadius: '4px', fontSize: '0.8rem', color: '#a3a3a3', border: '1px solid #404040' }}>
+              <span key={t} className="table-badge">
                 {t}
               </span>
-            )) : <span style={{color: '#a3a3a3'}}>Carregando tabelas ou banco de dados vazio...</span>}
+            )) : <span style={{color: '#94a3b8'}}>Carregando tabelas ou banco de dados vazio...</span>}
           </div>
         </div>
       )}
