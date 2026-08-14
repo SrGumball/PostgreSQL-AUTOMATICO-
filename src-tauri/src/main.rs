@@ -113,6 +113,30 @@ fn cleanup_old_backups(dest: &str, days: u64) -> Result<u64, String> {
     Ok(deleted_count)
 }
 
+#[tauri::command]
+fn get_database_tables(host: &str, port: &str, db: &str, user: &str, pass: &str) -> Result<Vec<String>, String> {
+    use postgres::{Client, NoTls};
+    let conn_str = format!("host={} port={} dbname={} user={} password={}", host, port, db, user, pass);
+    
+    match Client::connect(&conn_str, NoTls) {
+        Ok(mut client) => {
+            let query = "SELECT table_name FROM information_schema.tables WHERE table_schema = 'public' ORDER BY table_name;";
+            match client.query(query, &[]) {
+                Ok(rows) => {
+                    let mut tables = Vec::new();
+                    for row in rows {
+                        let table_name: String = row.get(0);
+                        tables.push(table_name);
+                    }
+                    Ok(tables)
+                },
+                Err(e) => Err(format!("Falha ao buscar tabelas: {}", e)),
+            }
+        }
+        Err(e) => Err(format!("Falha ao conectar: {}", e)),
+    }
+}
+
 fn main() {
     let show = CustomMenuItem::new("show".to_string(), "Abrir Painel");
     let quit = CustomMenuItem::new("quit".to_string(), "Sair do Backup Manager");
@@ -151,7 +175,7 @@ fn main() {
             }
             _ => {}
         })
-        .invoke_handler(tauri::generate_handler![test_connection, execute_backup, cleanup_old_backups])
+        .invoke_handler(tauri::generate_handler![test_connection, execute_backup, cleanup_old_backups, get_database_tables])
         .setup(|app: &mut tauri::App| -> Result<(), Box<dyn std::error::Error>> {
             // Inicializar a thread de background
             let app_handle = app.handle();

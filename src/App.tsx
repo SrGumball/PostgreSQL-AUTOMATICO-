@@ -24,6 +24,7 @@ function App() {
   const [logs, setLogs] = useState<{date: string, time: string, msg: string, type: string}[]>([]);
   const [chartData, setChartData] = useState(DEFAULT_CHART_DATA);
   const [logFilterDate, setLogFilterDate] = useState("");
+  const [dbTables, setDbTables] = useState<string[]>([]);
 
   // INIT: Load from localStorage ("banco local embutido")
   useEffect(() => {
@@ -131,6 +132,15 @@ function App() {
       if (res === "ok") {
         setStatus("Status: 🟢 SERVIDOR ON — PostgreSQL conectado");
         setIsConnected(true);
+        
+        // Fetch tables
+        try {
+          const tables = await invoke("get_database_tables", { ...config });
+          if (Array.isArray(tables)) setDbTables(tables);
+        } catch (err) {
+          addLog("Não foi possível listar as tabelas do banco.", "error");
+        }
+
       } else {
         setStatus("Status: 🔴 SERVIDOR OFF — " + res);
         setIsConnected(false);
@@ -252,6 +262,21 @@ function App() {
           </div>
         </div>
       </div>
+      
+      {/* Coluna Inferior: Estrutura do Banco de Dados */}
+      {isConnected && dbTables.length > 0 && (
+        <div className="card" style={{ marginTop: '2rem' }}>
+          <h2><Database size={20} style={{verticalAlign: 'middle', marginRight: 8}}/> Tabelas Inclusas no Backup (Estrutura do Banco)</h2>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem' }}>
+            {dbTables.map(t => (
+              <span key={t} style={{ background: '#262626', padding: '0.4rem 0.8rem', borderRadius: '4px', fontSize: '0.8rem', color: '#a3a3a3', border: '1px solid #404040' }}>
+                {t}
+              </span>
+            ))}
+          </div>
+        </div>
+      )}
+    </>
     );
   }
 
