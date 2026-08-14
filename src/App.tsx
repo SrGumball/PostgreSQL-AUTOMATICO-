@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { invoke } from "@tauri-apps/api/tauri";
 import { open } from "@tauri-apps/api/dialog";
+import { open as openShell } from "@tauri-apps/api/shell";
 import "./index.css";
 import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts';
 import { Settings, Activity, Folder, Database, HardDrive, Clock, Calendar } from 'lucide-react';
@@ -22,7 +23,7 @@ function App() {
   const [autoConnectEnabled, setAutoConnectEnabled] = useState(true);
   const [backupPath, setBackupPath] = useState("");
   const [schedule, setSchedule] = useState("24h");
-  const [logs, setLogs] = useState<{date: string, time: string, msg: string, type: string}[]>([]);
+  const [logs, setLogs] = useState<{date: string, time: string, msg: string, type: string, filePath?: string}[]>([]);
   const [chartData, setChartData] = useState(DEFAULT_CHART_DATA);
   const [logFilterDate, setLogFilterDate] = useState("");
   const [dbTables, setDbTables] = useState<string[]>([]);
@@ -113,12 +114,12 @@ function App() {
     }
   }, [isConnected]);
 
-  function addLog(msg: string, type: string = "info") {
+  function addLog(msg: string, type: string = "info", filePath?: string) {
     const now = new Date();
-    const time = now.toLocaleTimeString();
-    const date = now.toLocaleDateString(); // DD/MM/YYYY
+    const time = now.toLocaleTimeString('pt-BR');
+    const date = now.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric' }); // DD/MM/YYYY garantido
     setLogs(prev => {
-      const newLogs = [...prev, { date, time, msg, type }];
+      const newLogs = [...prev, { date, time, msg, type, filePath }];
       localStorage.setItem("axion_logs", JSON.stringify(newLogs));
       return newLogs;
     });
@@ -141,7 +142,7 @@ function App() {
       addLog("Iniciando rotina de backup (pg_dump) em segundo plano...", "info");
       
       invoke("execute_backup", { ...config, dest: backupPath }).then((size) => {
-        addLog(`Backup físico concluído com sucesso! (Tamanho real: ${Number(size).toFixed(2)}MB)`, "success");
+        addLog(`Backup físico concluído com sucesso! (Tamanho real: ${Number(size).toFixed(2)}MB)`, "success", backupPath);
         
         // Update Chart
         setChartData(prev => {
@@ -301,8 +302,17 @@ function App() {
             </h2>
             <div className="logs-container" style={{height: 140, overflowY: 'auto'}}>
               {filteredLogs.length > 0 ? filteredLogs.map((log, i) => (
-                <div key={i} className={`log-line ${log.type}`}>
-                  [{log.date} {log.time}] {log.msg}
+                <div key={i} className={`log-line ${log.type}`} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <span>[{log.date} {log.time}] {log.msg}</span>
+                  {log.filePath && (
+                    <button 
+                      onClick={() => openShell(log.filePath!)} 
+                      style={{ background: 'transparent', border: '1px solid currentColor', color: 'inherit', borderRadius: '4px', padding: '2px 8px', fontSize: '0.75rem', cursor: 'pointer', marginLeft: '8px', opacity: 0.8 }}
+                      title="Abrir pasta do backup"
+                    >
+                      Abrir Pasta
+                    </button>
+                  )}
                 </div>
               )) : (
                 <div className="log-line">Nenhum log encontrado para esta data.</div>
