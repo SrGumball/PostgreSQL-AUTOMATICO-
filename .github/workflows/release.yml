@@ -27,6 +27,10 @@ jobs:
       - name: install Rust stable
         uses: dtolnay/rust-toolchain@stable
 
+      - name: install Rust targets for macOS universal build
+        if: matrix.platform == 'macos-latest'
+        run: rustup target add x86_64-apple-darwin aarch64-apple-darwin
+
       - name: install dependencies (ubuntu only)
         if: matrix.platform == 'ubuntu-22.04'
         run: |
