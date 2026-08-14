@@ -36,8 +36,6 @@ jobs:
       - name: install frontend dependencies
         run: npm install
 
-      - name: create temp dummy db config if needed
-        run: mkdir -p dist && echo "{}" > dist/index.html || true
 
       - uses: tauri-apps/tauri-action@v0
         env:
