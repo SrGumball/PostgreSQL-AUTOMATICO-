@@ -18,7 +18,7 @@ const DEFAULT_CHART_DATA = [
 
 function App() {
   const [status, setStatus] = useState("Status: 🔴 SERVIDOR OFF — Aguardando conexão");
-  const [config, setConfig] = useState({ host: "192.168.1.100", port: "5432", db: "hospital", user: "postgres", pass: "" });
+  const [config, setConfig] = useState({ host: "192.168.1.100", port: "5432", db: "hospital", user: "postgres", pass: "", customPgDumpPath: "" });
   const [isConnected, setIsConnected] = useState(false);
   const [autoConnectEnabled, setAutoConnectEnabled] = useState(true);
   const [backupPath, setBackupPath] = useState("");
@@ -141,7 +141,7 @@ function App() {
     const interval = setInterval(() => {
       addLog("Iniciando rotina de backup (pg_dump) em segundo plano...", "info");
       
-      invoke("execute_backup", { ...config, dest: backupPath }).then((size) => {
+      invoke("execute_backup", { ...config, dest: backupPath, customPgDumpPath: config.customPgDumpPath }).then((size) => {
         addLog(`Backup físico concluído com sucesso! (Tamanho real: ${Number(size).toFixed(2)}MB)`, "success", backupPath);
         
         // Update Chart
@@ -222,6 +222,26 @@ function App() {
               <input readOnly value={backupPath} placeholder="Nenhuma pasta selecionada..." />
               <button className="btn-folder" onClick={selectFolder}>
                 Escolher
+              </button>
+            </div>
+
+            <label><Database size={16} style={{verticalAlign: 'text-bottom'}}/> Caminho do pg_dump (Opcional)</label>
+            <div className="path-selector">
+              <input readOnly value={config.customPgDumpPath || ""} placeholder="Auto-detectar..." title="Se vazio, o sistema tentará encontrar o pg_dump sozinho." />
+              <button className="btn-folder" onClick={async () => {
+                try {
+                  const selectedPath = await open({
+                    directory: false,
+                    multiple: false,
+                    title: "Selecione o executável pg_dump (pg_dump.exe no Windows)",
+                  });
+                  if (selectedPath && typeof selectedPath === 'string') {
+                    setConfig({ ...config, customPgDumpPath: selectedPath });
+                    addLog(`Caminho do pg_dump configurado manualmente.`, "info");
+                  }
+                } catch(e) {}
+              }}>
+                Procurar
               </button>
             </div>
 

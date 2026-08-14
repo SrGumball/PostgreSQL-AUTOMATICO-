@@ -62,7 +62,7 @@ fn get_pg_dump_path() -> String {
 }
 
 #[tauri::command]
-fn execute_backup(host: &str, port: &str, db: &str, user: &str, pass: &str, dest: &str) -> Result<f64, String> {
+fn execute_backup(host: &str, port: &str, db: &str, user: &str, pass: &str, dest: &str, custom_pg_dump_path: Option<String>) -> Result<f64, String> {
     use std::process::Command;
     use std::time::{SystemTime, UNIX_EPOCH};
     use std::fs;
@@ -72,7 +72,10 @@ fn execute_backup(host: &str, port: &str, db: &str, user: &str, pass: &str, dest
     let filepath = std::path::Path::new(dest).join(&filename);
     let filepath_str = filepath.to_str().unwrap();
 
-    let pg_dump_cmd = get_pg_dump_path();
+    let pg_dump_cmd = match custom_pg_dump_path {
+        Some(path) if !path.trim().is_empty() => path,
+        _ => get_pg_dump_path(),
+    };
 
     let output = Command::new(&pg_dump_cmd)
         .env("PGPASSWORD", pass)
