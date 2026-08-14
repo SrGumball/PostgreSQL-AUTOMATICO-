@@ -177,6 +177,7 @@ function App() {
 
   function renderDashboard() {
     return (
+      <>
       <div className="dashboard-grid">
         {/* Coluna Esquerda: Configurações */}
         <div className="col">
