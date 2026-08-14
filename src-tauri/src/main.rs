@@ -148,7 +148,7 @@ fn get_table_data(host: &str, port: &str, db: &str, user: &str, pass: &str, tabl
 
     match Client::connect(&conn_str, NoTls) {
         Ok(mut client) => {
-            let query = format!("SELECT COALESCE(json_agg(t)::text, '[]') FROM (SELECT * FROM {} LIMIT 50) t;", table);
+            let query = format!("SELECT COALESCE(json_agg(t)::text, '[]') FROM (SELECT * FROM \"{}\" LIMIT 50) t;", table);
             match client.query(&query, &[]) {
                 Ok(rows) => {
                     if let Some(row) = rows.get(0) {
