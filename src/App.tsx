@@ -297,10 +297,10 @@ function App() {
             <div style={{ width: '100%', height: 160 }}>
               <ResponsiveContainer width="100%" height="100%">
                 <AreaChart data={chartData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
-                  <XAxis dataKey="day" stroke="#a6adc8" fontSize={12} tickLine={false} axisLine={false} />
-                  <YAxis stroke="#a6adc8" fontSize={12} tickLine={false} axisLine={false} />
-                  <Tooltip contentStyle={{ backgroundColor: '#181825', border: '1px solid #45475a', borderRadius: '8px' }} />
-                  <Area type="monotone" dataKey="size" name="Tamanho (MB)" stroke="#89b4fa" fill="#89b4fa" fillOpacity={0.3} />
+                  <XAxis dataKey="day" stroke="#64748b" fontSize={12} tickLine={false} axisLine={false} />
+                  <YAxis stroke="#64748b" fontSize={12} tickLine={false} axisLine={false} />
+                  <Tooltip contentStyle={{ backgroundColor: '#ffffff', border: '1px solid #e2e8f0', borderRadius: '8px', color: '#0f172a' }} />
+                  <Area type="monotone" dataKey="size" name="Tamanho (MB)" stroke="#2563eb" fill="#3b82f6" fillOpacity={0.2} />
                 </AreaChart>
               </ResponsiveContainer>
             </div>
