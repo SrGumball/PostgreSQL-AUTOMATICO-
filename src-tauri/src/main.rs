@@ -40,9 +40,8 @@ fn test_connection(host: &str, port: &str, db: &str, user: &str, pass: &str, sta
 #[cfg(target_os = "windows")]
 fn get_pg_dump_path() -> String {
     use std::path::Path;
-    // Check common PostgreSQL installation paths on Windows
-    let common_versions = ["20", "19", "18", "17", "16", "15", "14", "13", "12", "11", "10"];
-    for version in common_versions.iter() {
+    // Check common PostgreSQL installation paths on Windows from version 40 down to 10
+    for version in (10..=40).rev() {
         let path = format!("C:\\Program Files\\PostgreSQL\\{}\\bin\\pg_dump.exe", version);
         if Path::new(&path).exists() {
             return path;
