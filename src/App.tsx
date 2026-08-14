@@ -238,6 +238,19 @@ function App() {
                 addLog("As configurações foram enviadas e salvas no Banco Local!", "success");
               }}>Salvar Configuração</button>
               <button className="btn-test" onClick={() => setIsConnected(false)}>Desconectar</button>
+              <button 
+                className="btn-test" 
+                style={{ flex: 0.4, borderColor: '#ef4444', color: '#ef4444', padding: '0.8rem' }}
+                onClick={() => {
+                  if(confirm("Tem certeza que deseja apagar todos os logs e configurações salvas?")) {
+                    localStorage.clear();
+                    window.location.reload();
+                  }
+                }} 
+                title="Limpar Dados Locais"
+              >
+                Limpar
+              </button>
             </div>
           </div>
         </div>
