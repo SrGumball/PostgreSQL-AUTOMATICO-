@@ -1,0 +1,179 @@
+// Prevents additional console window on Windows in release, DO NOT REMOVE!!
+#![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
+
+use postgres::{Client, NoTls};
+use tauri::{Manager, SystemTray, SystemTrayEvent, SystemTrayMenu, CustomMenuItem};
+use std::time::Duration;
+use std::sync::{Arc, Mutex};
+use tokio::time::sleep;
+
+struct AppState {
+    // Em uma versão completa, isso viria de um DB local / config file
+    db_config: Mutex<Option<(String, String, String, String, String)>>,
+    server_on: Mutex<bool>,
+}
+
+#[tauri::command]
+fn test_connection(host: &str, port: &str, db: &str, user: &str, pass: &str, state: tauri::State<AppState>) -> Result<String, String> {
+    let conn_str = format!("host={} port={} dbname={} user={} password={}", host, port, db, user, pass);
+    
+    match Client::connect(&conn_str, NoTls) {
+        Ok(mut client) => {
+            match client.query("SELECT 1", &[]) {
+                Ok(_) => {
+                    // Salvar config na memória (ou DB)
+                    let mut config = state.db_config.lock().unwrap();
+                    *config = Some((host.to_string(), port.to_string(), db.to_string(), user.to_string(), pass.to_string()));
+                    
+                    let mut on = state.server_on.lock().unwrap();
+                    *on = true;
+                    
+                    Ok("ok".into())
+                },
+                Err(e) => Err(format!("Falha na query: {}", e)),
+            }
+        }
+        Err(e) => Err(format!("Falha ao conectar: {}", e)),
+    }
+}
+
+#[tauri::command]
+fn execute_backup(host: &str, port: &str, db: &str, user: &str, pass: &str, dest: &str) -> Result<f64, String> {
+    use std::process::Command;
+    use std::time::{SystemTime, UNIX_EPOCH};
+    use std::fs;
+    
+    let timestamp = SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_secs();
+    let filename = format!("backup_{}_{}.sql", db, timestamp);
+    let filepath = std::path::Path::new(dest).join(&filename);
+    let filepath_str = filepath.to_str().unwrap();
+
+    let output = Command::new("pg_dump")
+        .env("PGPASSWORD", pass)
+        .arg("-h").arg(host)
+        .arg("-p").arg(port)
+        .arg("-U").arg(user)
+        .arg("-F").arg("p") // p = plain (SQL)
+        .arg("-f").arg(filepath_str)
+        .arg(db)
+        .output();
+
+    match output {
+        Ok(out) => {
+            if out.status.success() {
+                if let Ok(metadata) = fs::metadata(&filepath) {
+                    let size_mb = metadata.len() as f64 / (1024.0 * 1024.0);
+                    Ok(size_mb)
+                } else {
+                    Ok(0.0)
+                }
+            } else {
+                let err = String::from_utf8_lossy(&out.stderr);
+                Err(format!("Erro no pg_dump: {}", err))
+            }
+        }
+        Err(e) => Err(format!("Falha ao iniciar pg_dump (instale o postgresql-client): {}", e))
+    }
+}
+
+#[tauri::command]
+fn cleanup_old_backups(dest: &str, days: u64) -> Result<u64, String> {
+    use std::fs;
+    use std::time::SystemTime;
+
+    let path = std::path::Path::new(dest);
+    if !path.exists() {
+        return Ok(0);
+    }
+
+    let mut deleted_count = 0;
+    let now = SystemTime::now();
+    let max_age = std::time::Duration::from_secs(days * 24 * 60 * 60);
+
+    if let Ok(entries) = fs::read_dir(path) {
+        for entry in entries.flatten() {
+            if let Ok(metadata) = entry.metadata() {
+                if let Ok(modified) = metadata.modified() {
+                    if let Ok(age) = now.duration_since(modified) {
+                        if age > max_age {
+                            let filepath = entry.path();
+                            if let Some(ext) = filepath.extension() {
+                                if ext == "sql" {
+                                    if fs::remove_file(&filepath).is_ok() {
+                                        deleted_count += 1;
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+    Ok(deleted_count)
+}
+
+fn main() {
+    let show = CustomMenuItem::new("show".to_string(), "Abrir Painel");
+    let quit = CustomMenuItem::new("quit".to_string(), "Sair do Backup Manager");
+    let tray_menu = SystemTrayMenu::new()
+        .add_item(show)
+        .add_item(quit);
+        
+    let tray = SystemTray::new().with_menu(tray_menu);
+
+    tauri::Builder::default()
+        .manage(AppState {
+            db_config: Mutex::new(None),
+            server_on: Mutex::new(false),
+        })
+        .system_tray(tray)
+        .on_system_tray_event(|app: &tauri::AppHandle, event| match event {
+            SystemTrayEvent::MenuItemClick { id, .. } => {
+                match id.as_str() {
+                    "quit" => {
+                        std::process::exit(0);
+                    }
+                    "show" => {
+                        let window = app.get_window("main").unwrap();
+                        window.show().unwrap();
+                        window.set_focus().unwrap();
+                    }
+                    _ => {}
+                }
+            }
+            _ => {}
+        })
+        .on_window_event(|event| match event.event() {
+            tauri::WindowEvent::CloseRequested { api, .. } => {
+                event.window().hide().unwrap();
+                api.prevent_close();
+            }
+            _ => {}
+        })
+        .invoke_handler(tauri::generate_handler![test_connection, execute_backup, cleanup_old_backups])
+        .setup(|app: &mut tauri::App| -> Result<(), Box<dyn std::error::Error>> {
+            // Inicializar a thread de background
+            let app_handle = app.handle();
+            tauri::async_runtime::spawn(async move {
+                loop {
+                    // Loop de Monitoramento
+                    // println!("Monitorando banco de dados...");
+                    
+                    // Em produção: ler AppState, verificar conexão, rodar cron jobs de backup.
+                    sleep(Duration::from_secs(60)).await;
+                }
+            });
+            Ok(())
+        })
+        .build(tauri::generate_context!())
+        .expect("error while building tauri application")
+        .run(|_app_handle, event| match event {
+            tauri::RunEvent::ExitRequested { api, .. } => {
+                // Previne que a aplicação morra ao fechar a janela
+                api.prevent_exit();
+            }
+            _ => {}
+        });
+}
+
