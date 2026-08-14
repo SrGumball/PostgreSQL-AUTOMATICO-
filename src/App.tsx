@@ -25,6 +25,7 @@ function App() {
   const [chartData, setChartData] = useState(DEFAULT_CHART_DATA);
   const [logFilterDate, setLogFilterDate] = useState("");
   const [dbTables, setDbTables] = useState<string[]>([]);
+  const [selectedTableData, setSelectedTableData] = useState<{table: string, columns: string[], data: any[]}|null>(null);
 
   // INIT: Load from localStorage ("banco local embutido")
   useEffect(() => {
@@ -71,6 +72,25 @@ function App() {
       }
     } catch (err) {
       addLog("Erro ao listar tabelas do banco: " + err, "error");
+    }
+  };
+
+  const openTablePreview = async (table: string) => {
+    try {
+      addLog(`Buscando dados da tabela: ${table}...`, "info");
+      const jsonStr = await invoke("get_table_data", { ...config, table });
+      if (typeof jsonStr === 'string') {
+        const rows = JSON.parse(jsonStr);
+        if (Array.isArray(rows) && rows.length > 0) {
+          const columns = Object.keys(rows[0]);
+          setSelectedTableData({ table, columns, data: rows });
+          addLog(`Pré-visualização da tabela ${table} aberta com sucesso.`, "success");
+        } else {
+          addLog(`A tabela ${table} está vazia.`, "info");
+        }
+      }
+    } catch (err) {
+      addLog("Erro ao buscar dados da tabela: " + err, "error");
     }
   };
 
@@ -271,10 +291,47 @@ function App() {
           <h2><Database size={20} style={{verticalAlign: 'middle', marginRight: 8}}/> Tabelas Inclusas no Backup (Estrutura do Banco)</h2>
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem' }}>
             {dbTables.length > 0 ? dbTables.map(t => (
-              <span key={t} className="table-badge">
+              <span key={t} className="table-badge" onClick={() => openTablePreview(t)} title="Clique para ver os dados">
                 {t}
               </span>
             )) : <span style={{color: '#94a3b8'}}>Carregando tabelas ou banco de dados vazio...</span>}
+          </div>
+        </div>
+      )}
+      
+      {/* Modal de Pré-visualização de Tabela */}
+      {selectedTableData && (
+        <div className="modal-overlay" onClick={(e) => {
+          if (e.target === e.currentTarget) setSelectedTableData(null);
+        }}>
+          <div className="modal-content">
+            <div className="modal-header">
+              <h3><Database size={20} style={{verticalAlign: 'middle', marginRight: 8}}/> Pré-visualização: {selectedTableData.table}</h3>
+              <button className="btn-close" onClick={() => setSelectedTableData(null)}>✖</button>
+            </div>
+            
+            <div className="table-preview">
+              <table>
+                <thead>
+                  <tr>
+                    {selectedTableData.columns.map(col => (
+                      <th key={col}>{col}</th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  {selectedTableData.data.map((row, i) => (
+                    <tr key={i}>
+                      {selectedTableData.columns.map(col => (
+                        <td key={col}>
+                          {typeof row[col] === 'object' ? JSON.stringify(row[col]) : String(row[col])}
+                        </td>
+                      ))}
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
           </div>
         </div>
       )}

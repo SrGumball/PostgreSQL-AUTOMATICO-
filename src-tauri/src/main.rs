@@ -137,6 +137,34 @@ fn get_database_tables(host: &str, port: &str, db: &str, user: &str, pass: &str)
     }
 }
 
+#[tauri::command]
+fn get_table_data(host: &str, port: &str, db: &str, user: &str, pass: &str, table: &str) -> Result<String, String> {
+    use postgres::{Client, NoTls};
+    let conn_str = format!("host={} port={} dbname={} user={} password={}", host, port, db, user, pass);
+    
+    if !table.chars().all(|c| c.is_ascii_alphanumeric() || c == '_') {
+        return Err("Nome de tabela inválido".into());
+    }
+
+    match Client::connect(&conn_str, NoTls) {
+        Ok(mut client) => {
+            let query = format!("SELECT COALESCE(json_agg(t)::text, '[]') FROM (SELECT * FROM {} LIMIT 50) t;", table);
+            match client.query(&query, &[]) {
+                Ok(rows) => {
+                    if let Some(row) = rows.get(0) {
+                        let json_data: String = row.get(0);
+                        Ok(json_data)
+                    } else {
+                        Ok("[]".into())
+                    }
+                },
+                Err(e) => Err(format!("Falha ao buscar dados: {}", e)),
+            }
+        }
+        Err(e) => Err(format!("Falha ao conectar: {}", e)),
+    }
+}
+
 fn main() {
     let show = CustomMenuItem::new("show".to_string(), "Abrir Painel");
     let quit = CustomMenuItem::new("quit".to_string(), "Sair do Backup Manager");
@@ -175,7 +203,7 @@ fn main() {
             }
             _ => {}
         })
-        .invoke_handler(tauri::generate_handler![test_connection, execute_backup, cleanup_old_backups, get_database_tables])
+        .invoke_handler(tauri::generate_handler![test_connection, execute_backup, cleanup_old_backups, get_database_tables, get_table_data])
         .setup(|app: &mut tauri::App| -> Result<(), Box<dyn std::error::Error>> {
             // Inicializar a thread de background
             let app_handle = app.handle();
